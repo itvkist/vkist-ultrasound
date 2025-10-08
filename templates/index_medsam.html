@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏥 Medical Image Analysis</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            display: flex;
+            min-height: 700px;
+        }
+
+        /* 3-column layout */
+        .model-panel {
+            flex: 0 0 300px;
+            padding: 30px 20px;
+            background: #f8f9fa;
+            border-right: 2px solid #ecf0f1;
+        }
+
+        .image-panel {
+            flex: 1;
+            padding: 30px;
+            background: #ffffff;
+            border-right: 2px solid #ecf0f1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .results-panel {
+            flex: 1;
+            padding: 30px;
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-title {
+            font-size: 1.4rem;
+            margin-bottom: 25px;
+            color: #2c3e50;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        /* Model Selection */
+        .model-selection {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border-left: 5px solid #9b59b6;
+        }
+
+        .model-selection h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .model-selection h3::before {
+            content: "🤖";
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+
+        .model-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .model-option {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border: 2px solid #ecf0f1;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        .model-option:hover {
+            border-color: #3498db;
+            background: #ffffff;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(52, 152, 219, 0.2);
+        }
+
+        .model-option.selected {
+            border-color: #3498db;
+            background: #e3f2fd;
+            box-shadow: 0 3px 10px rgba(52, 152, 219, 0.3);
+        }
+
+        .model-option input[type="radio"] {
+            margin-right: 12px;
+            transform: scale(1.1);
+        }
+
+        .model-info {
+            flex: 1;
+        }
+
+        .model-name {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
+
+        .model-description {
+            color: #7f8c8d;
+            font-size: 0.85rem;
+            line-height: 1.3;
+        }
+
+        /* Image Display - Equal Heights */
+        .image-container {
+            width: 100%;
+            height: 350px;
+            border-radius: 15px;
+            overflow: hidden;
+            background: #ecf0f1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .image-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .placeholder {
+            color: #bdc3c7;
+            font-size: 1rem;
+            text-align: center;
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 3px dashed #bdc3c7;
+            border-radius: 15px;
+            padding: 30px 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: white;
+            cursor: pointer;
+            margin-top: auto;
+        }
+
+        .upload-area:hover {
+            border-color: #3498db;
+            background: #f8f9fa;
+            transform: translateY(-2px);
+        }
+
+        .upload-area.dragover {
+            border-color: #e74c3c;
+            background: #fef9f9;
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            color: #bdc3c7;
+            margin-bottom: 12px;
+        }
+
+        .upload-text {
+            font-size: 1rem;
+            color: #7f8c8d;
+            margin-bottom: 12px;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 10px 25px;
+            border: none;
+            border-radius: 25px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        /* Results */
+        .result-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 18px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border-left: 5px solid #3498db;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .result-icon {
+            font-size: 1.3rem;
+            margin-right: 8px;
+        }
+
+        .result-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .classification-result {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .status-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-right: 12px;
+            font-size: 0.85rem;
+        }
+
+        .status-inflammation {
+            background: #fee;
+            color: #e74c3c;
+            border: 1px solid #fadbd8;
+        }
+
+        .status-normal {
+            background: #eafaf1;
+            color: #27ae60;
+            border: 1px solid #a9dfbf;
+        }
+
+        .confidence-bar {
+            flex: 1;
+            height: 6px;
+            background: #ecf0f1;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #f39c12, #e74c3c);
+            border-radius: 3px;
+            transition: width 0.8s ease;
+        }
+
+        .confidence-text {
+            margin-left: 12px;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.9rem;
+        }
+
+        .model-used-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 8px;
+            text-transform: uppercase;
+        }
+
+        .severity-info {
+            display: flex;
+            align-items: center;
+            margin-top: 12px;
+        }
+
+        .severity-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            color: white;
+            margin-right: 12px;
+            font-size: 0.85rem;
+        }
+
+        .severity-details {
+            flex: 1;
+        }
+
+        .severity-details p {
+            margin: 4px 0;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+                /* Enhanced Anatomy Information Styles */
+        .anatomy-details {
+            background: #f0f8ff;
+            border-radius: 10px;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            margin-top: 10px;
+        }
+
+        .anatomy-section {
+            margin-bottom: 12px;
+        }
+
+        .anatomy-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .anatomy-label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+        }
+
+        .anatomy-label::before {
+            margin-right: 6px;
+            font-size: 1rem;
+        }
+
+        .anatomy-label.angle::before {
+            content: "📐";
+        }
+
+        .anatomy-label.inflammation::before {
+            content: "🔍";
+        }
+
+        .anatomy-label.fluid::before {
+            content: "💧";
+        }
+
+        .anatomy-value {
+            color: #34495e;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            padding-left: 20px;
+        }
+        /* Enhanced Position Info */
+        .position-info {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .position-main {
+            display: flex;
+            align-items: center;
+        }
+
+        .position-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 3px 10px rgba(155, 89, 182, 0.3);
+        }
+
+        .position-details {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 12px;
+            border-left: 4px solid #9b59b6;
+        }
+
+        .position-angle {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 6px;
+            font-size: 0.95rem;
+        }
+
+        .position-inflammation {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fee;
+            color: #e74c3c;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 1px solid #fadbd8;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .model-panel {
+                flex: none;
+                border-right: none;
+                border-bottom: 2px solid #ecf0f1;
+            }
+
+            .image-panel {
+                border-right: none;
+                border-bottom: 2px solid #ecf0f1;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .model-panel {
+                padding: 20px 15px;
+            }
+
+            .image-panel, .results-panel {
+                padding: 20px 15px;
+            }
+
+            .image-container {
+                height: 280px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 Medical Image Analysis</h1>
+            <p>Advanced AI-powered inflammation detection and segmentation</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Left Panel: Model Selection -->
+            <div class="model-panel">
+                <h2 class="panel-title">⚙️ Model Selection</h2>
+                
+                <div class="model-selection">
+                    <h3>Classification Model</h3>
+                    <div class="model-options" id="modelOptions">
+                        <!-- Models will be loaded here -->
+                        <div class="model-option selected">
+                            <input type="radio" name="model" value="medvit" checked>
+                            <div class="model-info">
+                                <div class="model-name">Loading models...</div>
+                                <div class="model-description">Please wait while we load available models</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Middle Panel: Original Image & Upload -->
+            <div class="image-panel">
+                <h2 class="panel-title">📤 Original Image</h2>
+                
+                <!-- Original Image Display -->
+                <div class="image-container" id="originalImageContainer">
+                    <div class="placeholder">Original image will appear here</div>
+                </div>
+
+                <!-- Upload Area -->
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Drag & drop your medical image here</div>
+                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                        Choose Image
+                    </button>
+                    <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+                </div>
+            </div>
+
+            <!-- Right Panel: Results & Segmented Image -->
+            <div class="results-panel">
+                <h2 class="panel-title">📊 Analysis Results</h2>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Analyzing image... Please wait</p>
+                </div>
+
+                <div id="results" style="display: none;">
+                    <div class="image-container" id="resultImageContainer">
+                        <div class="placeholder">Segmented result will appear here</div>
+                    </div>
+
+                    <div class="result-card" id="positionCard" style="display: none;">
+                        <div class="result-header">
+                            <span class="result-icon">📍</span>
+                            <span class="result-title">Ultrasound Position & Anatomy</span>
+                        </div>
+                        <div class="position-info">
+                            <div class="position-main">
+                                <div class="position-badge" id="positionBadge">-</div>
+                            </div>
+                            <div class="position-details">
+                                <div class="position-angle" id="positionAngle">-</div>
+                                <div class="position-inflammation" id="positionInflammation">-</div>
+                                
+                                <!-- Thêm phần anatomy details mới -->
+                                <div class="anatomy-details" id="anatomyDetails" style="display: none;">
+                                    <div class="anatomy-section">
+                                        <div class="anatomy-label angle">Góc chụp chi tiết</div>
+                                        <div class="anatomy-value" id="anatomyAngle">-</div>
+                                    </div>
+                                    <div class="anatomy-section">
+                                        <div class="anatomy-label inflammation">Vùng viêm thường gặp</div>
+                                        <div class="anatomy-value" id="anatomyInflammation">-</div>
+                                    </div>
+                                    <div class="anatomy-section">
+                                        <div class="anatomy-label fluid">Vị trí tập trung dịch</div>
+                                        <div class="anatomy-value" id="anatomyFluid">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <div class="result-header">
+                            <span class="result-icon">🔍</span>
+                            <span class="result-title">Classification Result</span>
+                            <span class="model-used-badge" id="modelUsedBadge">-</span>
+                        </div>
+                        <div class="classification-result">
+                            <div class="status-badge" id="statusBadge">-</div>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" id="confidenceFill"></div>
+                            </div>
+                            <div class="confidence-text" id="confidenceText">-</div>
+                        </div>
+                    </div>
+
+                    <div class="result-card" id="inflammationCard" style="display: none;">
+                        <div class="result-header">
+                            <span class="result-icon">⚕️</span>
+                            <span class="result-title">Inflammation Analysis</span>
+                        </div>
+                        <div class="severity-info">
+                            <div class="severity-badge" id="severityBadge">-</div>
+                            <div class="severity-details">
+                                <p><strong>Affected area:</strong> <span id="affectedRatio">-</span>%</p>
+                                <p><strong>Pixels count:</strong> <span id="pixelsCount">-</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="error" class="error" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://duongnd18.vkist-hub.com/proxy/5000';
+        let availableModels = [];
+        
+        // Enhanced position mapping with detailed information
+        const positionDetails = {
+            'r': {
+                angle: 'Góc chụp bên phải (Right)',
+                inflammation: 'Vùng viêm có thể ở các cấu trúc bên phải của khớp'
+            },
+            'suprapat': {
+                angle: 'Góc chụp trước xương bánh chè (Suprapatellar)',
+                inflammation: 'Viêm điểm bám gân tứ đầu (Quadriceps tendon insertion inflammation)'
+            },
+            'post': {
+                angle: 'Góc chụp kheo chân đằng sau (Posterior)',
+                inflammation: 'Viêm nang Baker (Baker\'s cyst inflammation)'
+            },
+            'lat': {
+                angle: 'Góc chụp bên (Lateral)',
+                inflammation: 'Viêm các cấu trúc bên của khớp'
+            },
+            'med': {
+                angle: 'Góc chụp giữa (Medial)',
+                inflammation: 'Viêm các cấu trúc giữa của khớp'
+            }
+        };
+        
+        // Load available models on page load
+        async function loadAvailableModels() {
+            try {
+                const response = await fetch(`${API_BASE}/api/models`);
+                const data = await response.json();
+                
+                if (data.success && data.models.length > 0) {
+                    availableModels = data.models;
+                    renderModelOptions(data.models, data.default);
+                } else {
+                    showError('No classification models available');
+                }
+            } catch (error) {
+                console.error('Error loading models:', error);
+                showError('Failed to load available models');
+            }
+        }
+
+        function renderModelOptions(models, defaultModel) {
+            const container = document.getElementById('modelOptions');
+            container.innerHTML = '';
+
+            models.forEach((model, index) => {
+                const isDefault = model.name === defaultModel;
+                const optionDiv = document.createElement('div');
+                optionDiv.className = `model-option ${isDefault ? 'selected' : ''}`;
+                optionDiv.onclick = () => selectModel(model.name);
+
+                optionDiv.innerHTML = `
+                    <input type="radio" name="model" value="${model.name}" ${isDefault ? 'checked' : ''}>
+                    <div class="model-info">
+                        <div class="model-name">${model.display_name}</div>
+                        <div class="model-description">${model.description}</div>
+                    </div>
+                `;
+
+                container.appendChild(optionDiv);
+            });
+        }
+
+        function selectModel(modelName) {
+            // Update radio button
+            document.querySelectorAll('input[name="model"]').forEach(radio => {
+                radio.checked = radio.value === modelName;
+            });
+
+            // Update visual selection
+            document.querySelectorAll('.model-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            const selectedOption = document.querySelector(`input[value="${modelName}"]`).closest('.model-option');
+            selectedOption.classList.add('selected');
+
+            console.log(`Selected model: ${modelName}`);
+        }
+
+        function getSelectedModel() {
+            const selectedRadio = document.querySelector('input[name="model"]:checked');
+            return selectedRadio ? selectedRadio.value : 'medvit';
+        }
+        
+        // Drag and drop functionality
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        function handleFile(file) {
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                showError('Please select a valid image file');
+                return;
+            }
+
+            // Display original image
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                displayOriginalImage(e.target.result);
+            };
+            reader.readAsDataURL(file);
+
+            // Upload and analyze
+            uploadAndAnalyze(file);
+        }
+
+        function displayOriginalImage(imageSrc) {
+            const container = document.getElementById('originalImageContainer');
+            container.innerHTML = `<img src="${imageSrc}" alt="Original Image">`;
+        }
+
+        async function uploadAndAnalyze(file) {
+            showLoading(true);
+            hideError();
+            hideResults();
+
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('model', getSelectedModel()); // Add selected model
+
+            try {
+                const response = await fetch(`${API_BASE}/api/analyze`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    displayResults(result);
+                } else {
+                    showError(result.error || 'Analysis failed');
+                }
+            } catch (error) {
+                showError(`Network error: ${error.message}`);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function displayResults(result) {
+            // Display result image
+            const resultContainer = document.getElementById('resultImageContainer');
+            resultContainer.innerHTML = `<img src="${API_BASE}${result.images.result}" alt="Analysis Result">`;
+
+            // Display enhanced position information if available
+           // Display enhanced position information if available
+            if (result.position) {
+                const positionCard = document.getElementById('positionCard');
+                const positionBadge = document.getElementById('positionBadge');
+                const positionAngle = document.getElementById('positionAngle');
+                const positionInflammation = document.getElementById('positionInflammation');
+                
+                // Anatomy details elements
+                const anatomyDetails = document.getElementById('anatomyDetails');
+                const anatomyAngle = document.getElementById('anatomyAngle');
+                const anatomyInflammation = document.getElementById('anatomyInflammation');
+                const anatomyFluid = document.getElementById('anatomyFluid');
+                
+                positionBadge.textContent = result.position.toUpperCase();
+                
+                // Check if anatomy_info is available from backend
+                if (result.anatomy_info) {
+                    // Use detailed anatomy info from backend
+                    positionAngle.textContent = result.anatomy_info.angle || `Góc chụp: ${result.position}`;
+                    positionInflammation.textContent = result.anatomy_info.inflammation || 'Thông tin chi tiết về vùng viêm chưa có sẵn';
+                    
+                    // Show detailed anatomy information
+                    anatomyAngle.textContent = result.anatomy_info.angle || '-';
+                    anatomyInflammation.textContent = result.anatomy_info.inflammation || '-';
+                    anatomyFluid.textContent = result.anatomy_info.fluid_location || '-';
+                    anatomyDetails.style.display = 'block';
+                } else {
+                    // Fallback to existing position details if anatomy_info not available
+                    const details = positionDetails[result.position.toLowerCase()] || {
+                        angle: `Góc chụp: ${result.position}`,
+                        inflammation: 'Thông tin chi tiết về vùng viêm chưa có sẵn'
+                    };
+                    
+                    positionAngle.textContent = details.angle;
+                    positionInflammation.textContent = details.inflammation;
+                    anatomyDetails.style.display = 'none';
+                }
+                
+                positionCard.style.display = 'block';
+            } else {
+                document.getElementById('positionCard').style.display = 'none';
+            }
+
+            // Display model used
+            const modelUsedBadge = document.getElementById('modelUsedBadge');
+            const usedModel = availableModels.find(m => m.name === result.model_used);
+            modelUsedBadge.textContent = usedModel ? usedModel.display_name : result.model_used;
+
+            // Display classification results
+            const classification = result.classification;
+            const statusBadge = document.getElementById('statusBadge');
+            const confidenceFill = document.getElementById('confidenceFill');
+            const confidenceText = document.getElementById('confidenceText');
+
+            if (classification.has_inflammation) {
+                statusBadge.textContent = '🔴 Viêm';
+                statusBadge.className = 'status-badge status-inflammation';
+            } else {
+                statusBadge.textContent = '🟢 Bình thường';
+                statusBadge.className = 'status-badge status-normal';
+            }
+
+            confidenceFill.style.width = `${classification.confidence}%`;
+            confidenceText.textContent = `${classification.confidence}%`;
+
+            // Display inflammation analysis if available
+            if (result.inflammation_analysis) {
+                const analysis = result.inflammation_analysis;
+                const inflammationCard = document.getElementById('inflammationCard');
+                const severityBadge = document.getElementById('severityBadge');
+                const affectedRatio = document.getElementById('affectedRatio');
+                const pixelsCount = document.getElementById('pixelsCount');
+
+                severityBadge.textContent = analysis.severity;
+                severityBadge.style.backgroundColor = analysis.color;
+                affectedRatio.textContent = analysis.ratio;
+                pixelsCount.textContent = `${analysis.pixels_count.toLocaleString()} / ${analysis.total_pixels.toLocaleString()}`;
+
+                inflammationCard.style.display = 'block';
+            } else {
+                document.getElementById('inflammationCard').style.display = 'none';
+            }
+
+            showResults(true);
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function showResults(show) {
+            document.getElementById('results').style.display = show ? 'block' : 'none';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+
+        function hideResults() {
+            document.getElementById('results').style.display = 'none';
+        }
+
+        // Health check and model loading on page load
+        window.addEventListener('load', async () => {
+            try {
+                // Load available models first
+                await loadAvailableModels();
+                
+                // Then check health
+                const response = await fetch(`${API_BASE}/api/health`);
+                const health = await response.json();
+                
+                if (health.status !== 'healthy') {
+                    showError('Server is not ready. Please check if models are loaded.');
+                }
+            } catch (error) {
+                showError('Cannot connect to server. Please make sure the backend is running on port 5000.');
+            }
+        });
+    </script>
+</body>
+</html>
