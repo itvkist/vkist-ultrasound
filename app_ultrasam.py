@@ -69,7 +69,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # BẮT ĐẦU CODE MỚI: Cấu hình cho UltraSAM (6 class)
 ULTRASAM_CONFIG_PATH = 'UltraSam/configs/UltraSAM/UltraSAM_full/downstream/segmentation/train_knee_resnet_6cls.py'
-ULTRASAM_CKPT_PATH = 'models/converted_best_coco_segm_mAP_iter_3400.pth'
+ULTRASAM_CKPT_PATH = 'models/converted_best_coco_segm_mAP_iter_5150.pth'
 ULTRASAM_SCORE_THRESHOLD = 0.5 # Ngưỡng tin cậy
 ULTRASAM_CLASSES = {
     0: 'effusion', 
@@ -753,7 +753,7 @@ def save_analysis_package(result_data, original_image_path, segmented_image_path
 @app.get("/")
 async def read_index():
     """Serve the main HTML page"""
-    html_file = Path(TEMPLATES_FOLDER) / "index.html"
+    html_file = Path(TEMPLATES_FOLDER) / "index_ultrasam.html"
     if html_file.exists():
         return FileResponse(html_file)
     else:
