@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phân tích ảnh siêu âm khớp gối</title>
+    
+    <!-- Link CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 PHÂN TÍCH ẢNH SIÊU ÂM KHỚP GỐI</h1>
+            <p>Hệ thống phân tích tự động với AI - Pipeline: Góc → Viêm → Phân đoạn → Đo đạc</p>
+        </div>
+
+        <div class="main-content">
+            <div class="models-panel">
+                <h3>⚙️ Chọn mô hình</h3>
+                
+                <div class="model-section">
+                    <h4>1️⃣ Phân loại góc chụp</h4>
+                    <select id="angleModel">
+                        <option value="convnext">ConvNeXt-Tiny (100%)</option>
+                        <option value="densenet">DenseNet121 (98%)</option>
+                        <option value="resnet50">ResNet50 (98%)</option>
+                        <option value="efficientnet_b2">EfficientNet-B2 (97.78%)</option>
+                        <option value="swin">Swin Transformer (97.78%)</option>
+                    </select>
+                    <small>Luôn chạy đầu tiên cho mọi ảnh</small>
+                </div>
+
+                <div class="model-section">
+                    <h4>2️⃣ Phát hiện viêm</h4>
+                    <select id="inflammationModel">
+                        <option value="efficientnet_b0">EfficientNet-B0</option>
+                    </select>
+                    <small>Chỉ với góc post-trans và suprapat-long</small>
+                </div>
+
+                <div class="model-section">
+                    <h4>3️⃣ Phân đoạn Suprapat</h4>
+                    <select id="segmentModelSup">
+                        <option value="deeplabv3">DeepLabV3-ResNet50 (91.67%)</option>
+                        <option value="efficientfeedback">EfficientFeedback (86%)</option>
+                        <option value="unet3plus">UNet3+ Attention (80%)</option>
+                        <option value="unet_resnet101">UNet-ResNet101 (73.62%)</option>
+                    </select>
+                    <small>Dùng cho góc suprapat-long</small>
+                </div>
+
+                <div class="model-section">
+                    <h4>4️⃣ Phân đoạn Post-trans</h4>
+                    <select id="segmentModelPost">
+                        <option value="deeplabv3_resnet101">DeepLabV3-ResNet101</option>
+                    </select>
+                    <small>Dùng cho góc post-trans</small>
+                </div>
+
+                <div class="info-badge">
+                    💡 Đo độ dày (chỉ SUP): Quét vùng 1/3 giữa, tìm đoạn liên tục dài nhất
+                </div>
+            </div>
+
+            <div class="upload-panel">
+                <div id="uploadSection">
+                    <h2 class="panel-title">📤 Tải ảnh lên</h2>
+                    
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">📷</div>
+                        <div style="margin-bottom: 15px; color: #7f8c8d;">
+                            Kéo thả ảnh vào đây hoặc
+                        </div>
+                        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                            Chọn ảnh
+                        </button>
+                        <input type="file" id="fileInput" accept="image/*">
+                    </div>
+
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <p>Đang phân tích ảnh...</p>
+                    </div>
+
+                    <div class="error" id="error"></div>
+                </div>
+
+                <div id="originalImageContainer" style="display: none;">
+                    <h2 class="panel-title">📷 Ảnh gốc</h2>
+                    <div class="image-preview-box">
+                        <img id="originalImage" class="preview-image">
+                    </div>
+                </div>
+            </div>
+
+            <div class="results-panel">
+                <h2 class="panel-title">📊 Kết quả phân tích</h2>
+                
+                <div id="resultsContent">
+                    <div id="angleResultCard" style="display: none;">
+                        <div class="angle-result-card">
+                            <h3>🎯 GÓC CHỤP</h3>
+                            <div class="angle-value" id="angleValue">-</div>
+                            <div class="angle-confidence" id="angleConfidenceText">-</div>
+                        </div>
+                    </div>
+
+                    <div id="segmentedImageContainer" style="display: none;">
+                        <div class="result-image-box">
+                            <h3>🎨 Ảnh phân đoạn</h3>
+                            <img id="segmentedImage">
+                            
+                            <div class="color-legend" id="colorLegend" style="display: none;">
+                                <h4>📋 Chú thích màu sắc:</h4>
+                                <div class="legend-items" id="legendItems"></div>
+                                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #e0e0e0; font-size: 0.8rem; color: #666;">
+                                    ⚠️ <strong>Viền trắng dày</strong>: Vùng viêm (dịch khớp & màng hoạt dịch)<br>
+                                    <span id="measurementNote" style="display: none;">📏 <strong>Đường đỏ</strong>: Đo độ dày tại vùng 1/3 giữa</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="resultsGrid" style="display: none;">
+                        <div class="results-grid">
+                            <div class="result-card full-width" id="inflammationCard" style="display: none;">
+                                <h4>🔬 Tình trạng viêm</h4>
+                                <div id="inflammationResult"></div>
+                                <div class="confidence" id="inflammationConfidence">-</div>
+                            </div>
+
+                            <div class="result-card full-width" id="measurementCard" style="display: none; border-left-color: #2ecc71; padding: 0; overflow: hidden;">
+                                <div style="padding: 15px;">
+                                    <h4>📏 Đo độ dày (Dịch + Màng hoạt dịch)</h4>
+                                </div>
+                                
+                                <div class="measurement-main">
+                                    <div class="measurement-label">Độ dày tối đa</div>
+                                    <div class="measurement-value" id="thicknessMm">- mm</div>
+                                    <div class="measurement-label">
+                                        (<span id="thicknessPx">-</span> pixels)
+                                    </div>
+                                </div>
+                                
+                                <div style="padding: 0 15px 15px 15px;">
+                                    <div class="measurement-details">
+                                        <div class="detail-box">
+                                            <div class="detail-label">Vị trí X</div>
+                                            <div class="detail-value" id="measurementLocationX">-</div>
+                                        </div>
+                                        <div class="detail-box">
+                                            <div class="detail-label">Phạm vi Y</div>
+                                            <div class="detail-value" id="measurementRangeY">-</div>
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 8px; font-size: 0.75rem; color: #7f8c8d; text-align: center;">
+                                        ℹ️ Đo tại vùng 1/3 giữa bounding box - Tìm đoạn liên tục dài nhất
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="result-card severity-card full-width" id="severityCard" style="display: none;">
+                                <h4>📈 Mức độ viêm</h4>
+                                <div>
+                                    <span class="severity-badge" id="severityBadge">-</span>
+                                </div>
+                                <div class="severity-details" id="severityDescription">-</div>
+                                <div class="severity-stats">
+                                    <div class="stat-box">
+                                        <div class="stat-label">Dịch khớp (Effusion)</div>
+                                        <div class="stat-value" id="effusionStat">-</div>
+                                    </div>
+                                    <div class="stat-box">
+                                        <div class="stat-label">Màng hoạt dịch (Synovium)</div>
+                                        <div class="stat-value" id="synoviumStat">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="noResults" class="no-results-message">
+                        Chưa có kết quả phân tích
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Link JavaScript -->
+    <script src="js/script.js"></script>
+</body>
+</html>
