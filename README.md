@@ -32,13 +32,13 @@ If you are using a different CUDA version, please install the corresponding comp
 
 ### Download Model Weights
 
-The weights of the models can be found in the following link: 
+The weights of the models can be found in the following link:
 
 ```
 https://drive.google.com/drive/folders/1lBkplP-5uv6V2wR1CJ2COaGy1SnZxxJl
 ```
 
-After download the link, unzip and copy them into the ***./models*** folder
+After downloading the link, unzip and copy the files into the `./models` folder
 
 ### Run the Application
 
