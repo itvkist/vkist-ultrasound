@@ -237,6 +237,76 @@ body {
     font-weight: 600;
     color: #2c3e50;
 }
+
+/* Patient Form Styles */
+.patient-panel {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+}
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-top: 15px;
+}
+.full-width {
+    grid-column: 1 / -1;
+}
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.form-group label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #34495e;
+}
+.form-group label span {
+    color: #e74c3c;
+}
+.form-group input, .form-group select, .form-group textarea {
+    padding: 10px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline: none;
+    border-color: #3498db;
+}
+.save-section {
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 2px solid #eee;
+    text-align: center;
+}
+.save-btn {
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+    color: white;
+    padding: 14px 40px;
+    border: none;
+    border-radius: 30px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+.save-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(46, 204, 113, 0.4);
+}
+.save-btn:disabled {
+    background: #bdc3c7;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+.save-btn .icon { font-size: 1.2rem; }
 .confidence {
     font-size: 0.85rem;
     color: #7f8c8d;

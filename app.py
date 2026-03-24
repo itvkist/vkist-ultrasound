@@ -1,4 +1,5 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, Query
+from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Request
+from pydantic import BaseModel
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,6 +15,8 @@ from torchvision import transforms
 import uvicorn
 from pathlib import Path
 import cv2
+import io
+import base64
 
 # Import custom models
 import sys
@@ -26,8 +29,9 @@ UPLOAD_FOLDER = 'uploads'
 RESULTS_FOLDER = 'results'
 TEMPLATES_FOLDER = 'templates'
 
-for folder in [UPLOAD_FOLDER, RESULTS_FOLDER, TEMPLATES_FOLDER]:
-    os.makedirs(folder, exist_ok=True)
+# for folder in [UPLOAD_FOLDER, RESULTS_FOLDER, TEMPLATES_FOLDER]:
+#     os.makedirs(folder, exist_ok=True)
+os.makedirs(TEMPLATES_FOLDER, exist_ok=True)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -72,8 +76,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/uploads", StaticFiles(directory=UPLOAD_FOLDER), name="uploads")
-app.mount("/results", StaticFiles(directory=RESULTS_FOLDER), name="results")
+# app.mount("/uploads", StaticFiles(directory=UPLOAD_FOLDER), name="uploads")
+# app.mount("/results", StaticFiles(directory=RESULTS_FOLDER), name="results")
 
 # ============ MODEL LOADING ============
 
@@ -489,18 +493,18 @@ async def analyze_image(
         print(f"{'='*60}")
         
         contents = await image.read()
-        filename = f"{uuid.uuid4().hex}_{image.filename}"
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        # filename = f"{uuid.uuid4().hex}_{image.filename}"
+        # filepath = os.path.join(UPLOAD_FOLDER, filename)
         
-        with open(filepath, "wb") as f:
-            f.write(contents)
+        # with open(filepath, "wb") as f:
+        #     f.write(contents)
         
-        image_pil = Image.open(filepath).convert('RGB')
+        image_pil = Image.open(io.BytesIO(contents)).convert('RGB')
         
         result = {
             'success': True,
-            'filename': filename,
-            'images': {'original': f"/uploads/{filename}"},
+            'filename': image.filename,
+            'images': {},
             'models_used': {
                 'angle': angle_model,
                 'inflammation': inflammation_model,
@@ -527,11 +531,12 @@ async def analyze_image(
             
             if masks:
                 segmented_img = create_segmentation_overlay(image_pil, masks, None, 'post')
-                seg_filename = f"seg_{filename}"
-                seg_path = os.path.join(RESULTS_FOLDER, seg_filename)
-                segmented_img.save(seg_path)
-                
-                result['images']['segmented'] = f"/results/{seg_filename}"
+                # Convert to base64
+                buffered = io.BytesIO()
+                segmented_img.save(buffered, format="PNG")
+                img_str = base64.b64encode(buffered.getvalue()).decode()
+
+                result['images']['segmented'] = f"data:image/png;base64,{img_str}"
                 
                 detected_classes = [k for k, v in masks.items() if np.sum(v) > 0]
                 color_legend = []
@@ -567,11 +572,12 @@ async def analyze_image(
                 measurement = measure_thickness_new(masks, image_pil.size)
                 
                 segmented_img = create_segmentation_overlay(image_pil, masks, measurement, 'sup')
-                seg_filename = f"seg_{filename}"
-                seg_path = os.path.join(RESULTS_FOLDER, seg_filename)
-                segmented_img.save(seg_path)
-                
-                result['images']['segmented'] = f"/results/{seg_filename}"
+                # Convert to base64
+                buffered = io.BytesIO()
+                segmented_img.save(buffered, format="PNG")
+                img_str = base64.b64encode(buffered.getvalue()).decode()
+
+                result['images']['segmented'] = f"data:image/png;base64,{img_str}"
                 
                 if measurement:
                     result['measurement'] = {
@@ -623,8 +629,77 @@ async def analyze_image(
 async def health_check():
     return JSONResponse({'status': 'healthy'})
 
+class SaveDataRequest(BaseModel):
+    patient_info: dict
+    analysis_result: dict
+    images: dict
+
+@app.post("/api/save")
+async def save_patient_data(data: SaveDataRequest):
+    try:
+        p = data.patient_info
+        res = data.analysis_result
+        imgs = data.images
+        
+        # 1. Tạo thư mục theo mã bệnh nhân
+        patient_id = p.get('id', 'unknown').strip()
+        patient_name = p.get('name', 'no_name').strip()
+        
+        # Clean folder name
+        folder_name = f"{patient_id}_{patient_name}".replace(" ", "_")
+        target_dir = os.path.join("patients", folder_name)
+        os.makedirs(target_dir, exist_ok=True)
+        
+        # 2. Lưu info.txt
+        info_path = os.path.join(target_dir, "info.txt")
+        with open(info_path, "w", encoding="utf-8") as f:
+            f.write(f"--- THÔNG TIN BỆNH NHÂN ---\n")
+            f.write(f"Mã BN: {patient_id}\n")
+            f.write(f"Họ tên: {patient_name}\n")
+            f.write(f"Giới tính: {p.get('gender')}\n")
+            f.write(f"Tuổi: {p.get('age')}\n")
+            f.write(f"Chẩn đoán BS: {p.get('diagnosis')}\n\n")
+            
+            f.write(f"--- KẾT QUẢ PHÂN TÍCH AI ---\n")
+            f.write(f"Góc chụp: {res.get('angle', {}).get('class')} ({res.get('angle', {}).get('confidence')}%)\n")
+            
+            if 'inflammation' in res:
+                infl = res['inflammation']
+                f.write(f"Viêm nhiễm: {'Có' if infl['detected'] else 'Không'} ({infl['confidence']}%)\n")
+            
+            if 'measurement' in res:
+                m = res['measurement']
+                f.write(f"Độ dày màng: {m['thickness_mm']} mm ({m['thickness_px']} px)\n")
+                f.write(f"Vị trí x: {m['location_x']}\n")
+            
+            if 'severity' in res:
+                s = res['severity']
+                f.write(f"Mức độ: {s['severity']}\n")
+                f.write(f"Mô tả: {s['description']}\n")
+
+        # 3. Lưu ảnh
+        def save_base64_img(b64_str, filename):
+            if not b64_str: return
+            # Remove header if present
+            if "," in b64_str:
+                b64_str = b64_str.split(",")[1]
+            
+            img_data = base64.b64decode(b64_str)
+            with open(os.path.join(target_dir, filename), "wb") as f:
+                f.write(img_data)
+
+        save_base64_img(imgs.get('original'), "original.png")
+        save_base64_img(imgs.get('segmented'), "segmented.png")
+        
+        print(f"✅ Data saved for patient: {patient_id}")
+        return {"success": True, "folder": target_dir}
+        
+    except Exception as e:
+        print(f"❌ Save Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == '__main__':
     print("🏥 Medical Image Analysis Server")
-    print(f"🌐 http://localhost:8000")
+    print(f"🌐 http://127.0.0.1:8000")
     print(f"🖥️ Device: {device}")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)

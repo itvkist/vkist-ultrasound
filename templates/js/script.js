@@ -1,6 +1,8 @@
-const API_BASE = 'http://localhost:8000';
+const API_BASE = 'http://127.0.0.1:8000';
 const uploadArea = document.getElementById('uploadArea');
 const fileInput = document.getElementById('fileInput');
+let currentResult = null;
+let originalImageBase64 = null;
 
 const ANGLE_NAMES = {
     'med-lat': 'Med-Lat Long',
@@ -40,7 +42,8 @@ function handleFile(file) {
 
     const reader = new FileReader();
     reader.onload = (e) => {
-        document.getElementById('originalImage').src = e.target.result;
+        originalImageBase64 = e.target.result;
+        document.getElementById('originalImage').src = originalImageBase64;
         document.getElementById('originalImageContainer').style.display = 'block';
     };
     reader.readAsDataURL(file);
@@ -80,9 +83,12 @@ async function uploadAndAnalyze(file) {
         if (!response.ok) throw new Error('Lỗi phân tích');
 
         const result = await response.json();
-        console.log('✅ Response:', result);
+        console.log('✅ TRẢ VỀ TỪ API:', result);
         
-        if (result.success) displayResults(result);
+        if (result.success) {
+            currentResult = result;
+            displayResults(result);
+        }
         else showError('Phân tích thất bại');
 
     } catch (error) {
@@ -94,63 +100,137 @@ async function uploadAndAnalyze(file) {
 }
 
 function displayResults(result) {
-    document.getElementById('noResults').style.display = 'none';
-    
-    document.getElementById('angleResultCard').style.display = 'block';
-    document.getElementById('angleValue').textContent = ANGLE_NAMES[result.angle.class] || result.angle.class;
-    document.getElementById('angleConfidenceText').textContent = `Độ tin cậy: ${result.angle.confidence}%`;
-
-    if (result.inflammation) {
-        document.getElementById('resultsGrid').style.display = 'block';
-        document.getElementById('inflammationCard').style.display = 'block';
+    try {
+        console.log('--- ĐANG HIỂN THỊ KẾT QUẢ ---');
+        document.getElementById('noResults').style.display = 'none';
         
-        const inflDiv = document.getElementById('inflammationResult');
-        if (result.inflammation.detected) {
-            inflDiv.innerHTML = '<span class="badge badge-danger">CÓ KHẢ NĂNG VIÊM / THEO DÕI VIÊM</span>';
-        } else {
-            inflDiv.innerHTML = '<span class="badge badge-success">KHÔNG VIÊM</span>';
-        }
-        document.getElementById('inflammationConfidence').textContent = `Độ tin cậy: ${result.inflammation.confidence}%`;
-    }
+        document.getElementById('angleResultCard').style.display = 'block';
+        document.getElementById('angleValue').textContent = ANGLE_NAMES[result.angle.class] || result.angle.class;
+        document.getElementById('angleConfidenceText').textContent = `Độ tin cậy: ${result.angle.confidence}%`;
 
-    if (result.segmentation && result.segmentation.performed) {
-        document.getElementById('segmentedImageContainer').style.display = 'block';
-        document.getElementById('segmentedImage').src = API_BASE + result.images.segmented;
-        
-        if (result.segmentation.color_legend) {
-            displayColorLegend(result.segmentation.color_legend, result.segmentation.angle_type);
+        if (result.inflammation) {
+            console.log('✅ Hiển thị Inflammation');
+            document.getElementById('resultsGrid').style.display = 'block';
+            document.getElementById('inflammationCard').style.display = 'block';
+            
+            const inflDiv = document.getElementById('inflammationResult');
+            if (result.inflammation.detected) {
+                inflDiv.innerHTML = '<span class="badge badge-danger">CÓ KHẢ NĂNG VIÊM / THEO DÕI VIÊM</span>';
+            } else {
+                inflDiv.innerHTML = '<span class="badge badge-success">KHÔNG VIÊM</span>';
+            }
+            document.getElementById('inflammationConfidence').textContent = `Độ tin cậy: ${result.inflammation.confidence}%`;
         }
 
-        if (result.segmentation.angle_type === 'sup') {
-            document.getElementById('measurementNote').style.display = 'inline';
-        } else {
-            document.getElementById('measurementNote').style.display = 'none';
+        if (result.segmentation && result.segmentation.performed) {
+            console.log('✅ Hiển thị Segmentation & Overlay');
+            document.getElementById('segmentedImageContainer').style.display = 'block';
+            document.getElementById('segmentedImage').src = result.images.segmented;
+            
+            if (result.segmentation.color_legend) {
+                displayColorLegend(result.segmentation.color_legend, result.segmentation.angle_type);
+            }
+
+            if (result.segmentation.angle_type === 'sup') {
+                document.getElementById('measurementNote').style.display = 'inline';
+            } else {
+                document.getElementById('measurementNote').style.display = 'none';
+            }
         }
-    }
 
-    if (result.measurement) {
-        document.getElementById('measurementCard').style.display = 'block';
-        
-        document.getElementById('thicknessMm').textContent = `${result.measurement.thickness_mm} mm`;
-        document.getElementById('thicknessPx').textContent = `${result.measurement.thickness_px}`;
-        document.getElementById('measurementLocationX').textContent = result.measurement.location_x;
-        document.getElementById('measurementRangeY').textContent = 
-            `${result.measurement.y_start} - ${result.measurement.y_end}`;
-        
-        console.log('📏 Measurement displayed:', result.measurement);
-    }
+        if (result.measurement) {
+            console.log('✅ Hiển thị Đo đạc (Measurement)');
+            document.getElementById('measurementCard').style.display = 'block';
+            
+            document.getElementById('thicknessMm').textContent = `${result.measurement.thickness_mm} mm`;
+            document.getElementById('thicknessPx').textContent = `${result.measurement.thickness_px}`;
+            document.getElementById('measurementLocationX').textContent = result.measurement.location_x;
+            document.getElementById('measurementRangeY').textContent = 
+                `${result.measurement.y_start} - ${result.measurement.y_end}`;
+        }
 
-    if (result.severity) {
-        document.getElementById('severityCard').style.display = 'block';
-        const badge = document.getElementById('severityBadge');
-        badge.textContent = result.severity.severity;
-        badge.style.background = result.severity.color;
-        document.getElementById('severityDescription').textContent = result.severity.description;
-        document.getElementById('effusionStat').textContent = 
-            `${result.severity.effusion.ratio}% (${result.severity.effusion.thickness}px)`;
-        document.getElementById('synoviumStat').textContent = `${result.severity.synovium.ratio}%`;
+        if (result.severity) {
+            console.log('✅ Hiển thị Mức độ (Severity)');
+            document.getElementById('severityCard').style.display = 'block';
+            const badge = document.getElementById('severityBadge');
+            badge.textContent = result.severity.severity;
+            badge.style.background = result.severity.color;
+            document.getElementById('severityDescription').textContent = result.severity.description;
+            document.getElementById('effusionStat').textContent = 
+                `${result.severity.effusion.ratio}% (${result.severity.effusion.thickness}px)`;
+            document.getElementById('synoviumStat').textContent = `${result.severity.synovium.ratio}%`;
+        }
+
+        // Hiện bảng nhập liệu bệnh nhân
+        document.getElementById('patientInfoPanel').style.display = 'block';
+        updateSaveButtonState();
+
+    } catch (err) {
+        console.error('❌ LỖI TRONG displayResults:', err);
+        showError(`Lỗi hiển thị: ${err.message}`);
     }
 }
+
+// Kiểm tra tính hợp lệ của form
+function updateSaveButtonState() {
+    const name = document.getElementById('patientName').value.trim();
+    const id = document.getElementById('patientId').value.trim();
+    const btn = document.getElementById('saveDataBtn');
+    
+    // Nút lưu chỉ bật khi có kết quả và điền đủ Tên + Mã
+    btn.disabled = !(currentResult && name && id);
+}
+
+// Lắng nghe thay đổi trên form
+['patientName', 'patientId', 'patientGender', 'patientAge', 'doctorDiagnosis'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updateSaveButtonState);
+});
+
+// Hàm lưu dữ liệu
+document.getElementById('saveDataBtn').addEventListener('click', async () => {
+    if (!currentResult) return;
+
+    const saveBtn = document.getElementById('saveDataBtn');
+    const statusDiv = document.getElementById('saveStatus');
+    
+    const payload = {
+        patient_info: {
+            name: document.getElementById('patientName').value,
+            id: document.getElementById('patientId').value,
+            gender: document.getElementById('patientGender').value,
+            age: document.getElementById('patientAge').value,
+            diagnosis: document.getElementById('doctorDiagnosis').value
+        },
+        analysis_result: currentResult,
+        images: {
+            original: originalImageBase64,
+            segmented: currentResult.images.segmented
+        }
+    };
+
+    try {
+        saveBtn.disabled = true;
+        statusDiv.innerHTML = '<span style="color: blue;">⌛ Đang lưu...</span>';
+        
+        const response = await fetch(`${API_BASE}/api/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const resData = await response.json();
+        if (resData.success) {
+            statusDiv.innerHTML = `<span style="color: green;">✅ Đã lưu vào thư mục: <strong>${resData.folder}</strong></span>`;
+        } else {
+            throw new Error(resData.detail || 'Lỗi không xác định');
+        }
+    } catch (error) {
+        console.error('❌ Save error:', error);
+        statusDiv.innerHTML = `<span style="color: red;">❌ Lỗi: ${error.message}</span>`;
+    } finally {
+        saveBtn.disabled = false;
+    }
+});
 
 function displayColorLegend(colorLegend, angleType) {
     const legendContainer = document.getElementById('legendItems');

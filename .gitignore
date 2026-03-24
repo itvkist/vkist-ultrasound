@@ -4,6 +4,7 @@ uploads/
 models/
 results/
 __pycache__/
+patients/
 
 # Ignore .pth files
 *.pth

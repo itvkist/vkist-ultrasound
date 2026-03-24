@@ -98,6 +98,44 @@
                 <h2 class="panel-title">📊 Kết quả phân tích</h2>
                 
                 <div id="resultsContent">
+                    <!-- Patient Information Form -->
+                    <div class="patient-panel" id="patientInfoPanel" style="display: none;">
+                        <h3 class="panel-title" style="font-size: 1.1rem;">👤 Thông tin bệnh nhân</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="patientName">Họ và tên <span>*</span></label>
+                                <input type="text" id="patientName" placeholder="Nhập tên bệnh nhân...">
+                            </div>
+                            <div class="form-group">
+                                <label for="patientId">Mã bệnh nhân <span>*</span></label>
+                                <input type="text" id="patientId" placeholder="VD: BN001...">
+                            </div>
+                            <div class="form-group">
+                                <label for="patientGender">Giới tính</label>
+                                <select id="patientGender">
+                                    <option value="Nam">Nam</option>
+                                    <option value="Nữ">Nữ</option>
+                                    <option value="Khác">Khác</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="patientAge">Tuổi</label>
+                                <input type="number" id="patientAge" placeholder="Nhập tuổi...">
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="doctorDiagnosis">Chẩn đoán của bác sĩ</label>
+                                <textarea id="doctorDiagnosis" rows="3" placeholder="Nhập chẩn đoán hoặc ghi chú thêm..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="save-section">
+                            <button id="saveDataBtn" class="save-btn" disabled>
+                                <span class="icon">💾</span> Lưu dữ liệu vào máy
+                            </button>
+                            <div id="saveStatus" style="margin-top: 10px; font-size: 0.85rem;"></div>
+                        </div>
+                    </div>
+
                     <div id="angleResultCard" style="display: none;">
                         <div class="angle-result-card">
                             <h3>🎯 GÓC CHỤP</h3>
@@ -189,6 +227,6 @@
     </div>
 
     <!-- Link JavaScript -->
-    <script src="js/script.js"></script>
+    <script src="js/script.js?v=1.1"></script>
 </body>
 </html>
