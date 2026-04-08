@@ -104,6 +104,11 @@ function displayResults(result) {
         console.log('--- ĐANG HIỂN THỊ KẾT QUẢ ---');
         document.getElementById('noResults').style.display = 'none';
         
+        // Cập nhật ảnh gốc thành ảnh đã tăng cường tương phản (CLAHE)
+        if (result.images && result.images.enhanced) {
+            document.getElementById('originalImage').src = result.images.enhanced;
+        }
+        
         document.getElementById('angleResultCard').style.display = 'block';
         document.getElementById('angleValue').textContent = ANGLE_NAMES[result.angle.class] || result.angle.class;
         document.getElementById('angleConfidenceText').textContent = `Độ tin cậy: ${result.angle.confidence}%`;

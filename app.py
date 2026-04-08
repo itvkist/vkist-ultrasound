@@ -17,6 +17,8 @@ from pathlib import Path
 import cv2
 import io
 import base64
+from datetime import datetime
+import re
 
 # Import custom models
 import sys
@@ -242,6 +244,20 @@ def segment_image(model, image_pil, model_type, angle_type):
     
     return preds, masks
 
+def get_mask_bounding_box(mask):
+    """
+    Duyệt toàn bộ vùng được mask và trả về khung bao (Bounding Box).
+    Trả về: (x, y, w, h) hoặc None nếu mask rỗng.
+    """
+    if mask is None or np.sum(mask) == 0:
+        return None
+        
+    points = cv2.findNonZero(mask.astype(np.uint8))
+    if points is None:
+        return None
+        
+    return cv2.boundingRect(points)
+
 def find_max_continuous_segment(col_array):
     padded = np.concatenate(([0], col_array, [0]))
     diffs = np.diff(padded)
@@ -275,7 +291,7 @@ def measure_thickness_new(masks, image_size, measure_ids=None):
         class_map = SEGMENT_CLASSES_POST
 
     for class_id, class_name in class_map.items():
-        if class_name not in masks:
+        if class_name not in masks or class_name == 'background':
             continue
         mask = masks[class_name]
         if np.sum(mask) > 0:
@@ -288,12 +304,14 @@ def measure_thickness_new(masks, image_size, measure_ids=None):
     if not has_any_label or np.sum(mask_measure) == 0:
         return None
     
-    points = cv2.findNonZero(mask_all_labels)
-    if points is None:
+    # Đóng khung toàn bộ vùng được mask (xương, màng, dịch, mỡ...)
+    bbox_all = get_mask_bounding_box(mask_all_labels)
+    if bbox_all is None:
         return None
+        
+    x_all, y_all, w_all, h_all = bbox_all
     
-    x_all, y_all, w_all, h_all = cv2.boundingRect(points)
-    
+    # Từ khung này, xác định vùng quét là 1/3 ở giữa theo chiều ngang
     roi_start = x_all + (w_all // 3)
     roi_end = x_all + (2 * w_all // 3)
     
@@ -427,8 +445,8 @@ def create_segmentation_overlay(image_pil, masks, measurement=None, angle_type='
         
         draw.rectangle(
             [bbox['x'], bbox['y'], bbox['x'] + bbox['w'], bbox['y'] + bbox['h']],
-            outline=(255, 200, 0),
-            width=2
+            outline=(0, 255, 0), # Chuyển sang xanh lá cho dễ nhìn
+            width=3              # Tăng độ dày khung
         )
         
         h = image_pil.size[1]
@@ -465,6 +483,20 @@ def create_segmentation_overlay(image_pil, masks, measurement=None, angle_type='
     
     return overlay_pil
 
+def apply_clahe(image_pil):
+    """Áp dụng thuật toán CLAHE để tăng độ tương phản. Phục vụ cả hiển thị và làm đầu vào AI."""
+    # Chuyển từ PIL sang OpenCV (numpy array)
+    img_array = np.array(image_pil)
+    # Chuyển sang thang độ xám (Gray) để xử lý CLAHE
+    gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+    
+    # Tạo đối tượng CLAHE
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    enhanced_gray = clahe.apply(gray)
+    
+    # Chuyển ngược lại sang RGB (3 kênh) để tương thích với các models
+    enhanced_rgb = cv2.cvtColor(enhanced_gray, cv2.COLOR_GRAY2RGB)
+    return Image.fromarray(enhanced_rgb)
 
 # Mount thư mục static (CSS, JS)
 app.mount("/css", StaticFiles(directory="templates/css"), name="css")
@@ -493,18 +525,20 @@ async def analyze_image(
         print(f"{'='*60}")
         
         contents = await image.read()
-        # filename = f"{uuid.uuid4().hex}_{image.filename}"
-        # filepath = os.path.join(UPLOAD_FOLDER, filename)
-        
-        # with open(filepath, "wb") as f:
-        #     f.write(contents)
-        
         image_pil = Image.open(io.BytesIO(contents)).convert('RGB')
+        
+        # Tạo ảnh tăng cường độ tương phản (Enhanced) cho mục đích hiển thị
+        enhanced_pil = apply_clahe(image_pil)
+        buffered_en = io.BytesIO()
+        enhanced_pil.save(buffered_en, format="PNG")
+        enhanced_str = base64.b64encode(buffered_en.getvalue()).decode()
         
         result = {
             'success': True,
             'filename': image.filename,
-            'images': {},
+            'images': {
+                'enhanced': f"data:image/png;base64,{enhanced_str}"
+            },
             'models_used': {
                 'angle': angle_model,
                 'inflammation': inflammation_model,
@@ -514,7 +548,7 @@ async def analyze_image(
         }
         
         angle_clf = load_angle_model(angle_model)
-        angle, angle_conf = predict_angle(angle_clf, image_pil)
+        angle, angle_conf = predict_angle(angle_clf, enhanced_pil)
         result['angle'] = {'class': angle, 'confidence': angle_conf}
         print(f"✅ Angle: {angle} ({angle_conf}%)")
         
@@ -522,12 +556,12 @@ async def analyze_image(
             print(f"🔍 POST-TRANS pipeline")
             
             inflam_model = load_inflammation_model()
-            has_inflammation, inflam_conf = predict_inflammation(inflam_model, image_pil)
+            has_inflammation, inflam_conf = predict_inflammation(inflam_model, enhanced_pil)
             result['inflammation'] = {'detected': has_inflammation, 'confidence': inflam_conf}
             print(f"✅ Inflammation: {has_inflammation} ({inflam_conf}%)")
             
             seg_model = load_segmentation_model_post(segment_model_post)
-            preds, masks = segment_image(seg_model, image_pil, segment_model_post, 'post')
+            preds, masks = segment_image(seg_model, enhanced_pil, segment_model_post, 'post')
             
             if masks:
                 segmented_img = create_segmentation_overlay(image_pil, masks, None, 'post')
@@ -561,15 +595,15 @@ async def analyze_image(
             print(f"🔍 SUPRAPAT pipeline")
             
             inflam_model = load_inflammation_model()
-            has_inflammation, inflam_conf = predict_inflammation(inflam_model, image_pil)
+            has_inflammation, inflam_conf = predict_inflammation(inflam_model, enhanced_pil)
             result['inflammation'] = {'detected': has_inflammation, 'confidence': inflam_conf}
             print(f"✅ Inflammation: {has_inflammation} ({inflam_conf}%)")
             
             seg_model = load_segmentation_model_sup(segment_model_sup)
-            preds, masks = segment_image(seg_model, image_pil, segment_model_sup, 'sup')
+            preds, masks = segment_image(seg_model, enhanced_pil, segment_model_sup, 'sup')
             
             if masks:
-                measurement = measure_thickness_new(masks, image_pil.size)
+                measurement = measure_thickness_new(masks, enhanced_pil.size)
                 
                 segmented_img = create_segmentation_overlay(image_pil, masks, measurement, 'sup')
                 # Convert to base64
@@ -629,6 +663,15 @@ async def analyze_image(
 async def health_check():
     return JSONResponse({'status': 'healthy'})
 
+def sanitize_name(name):
+    # Loại bỏ ký tự không hợp lệ cho folder trên Windows
+    if not name: return "unknown"
+    # Thay thế ký tự lạ bằng dấu gạch dưới
+    clean = re.sub(r'[\\/*?:"<>|]', "_", name)
+    # Loại bỏ dấu cách thừa
+    clean = clean.strip().replace(" ", "_")
+    return clean
+
 class SaveDataRequest(BaseModel):
     patient_info: dict
     analysis_result: dict
@@ -641,13 +684,18 @@ async def save_patient_data(data: SaveDataRequest):
         res = data.analysis_result
         imgs = data.images
         
-        # 1. Tạo thư mục theo mã bệnh nhân
-        patient_id = p.get('id', 'unknown').strip()
-        patient_name = p.get('name', 'no_name').strip()
+        # 1. Tạo thư mục theo mã bệnh nhân (nhóm chính)
+        patient_id = sanitize_name(p.get('id', 'unknown'))
+        patient_name = sanitize_name(p.get('name', 'no_name'))
         
-        # Clean folder name
-        folder_name = f"{patient_id}_{patient_name}".replace(" ", "_")
-        target_dir = os.path.join("patients", folder_name)
+        # Thư mục chính của bệnh nhân
+        patient_folder = f"{patient_id}_{patient_name}"
+        
+        # Thư mục con theo thời gian hiện tại
+        timestamp_folder = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Tổng hợp đường dẫn: patients/ID_Name/TIMESTAMP/
+        target_dir = os.path.join("patients", patient_folder, timestamp_folder)
         os.makedirs(target_dir, exist_ok=True)
         
         # 2. Lưu info.txt
