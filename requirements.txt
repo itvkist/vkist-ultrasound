@@ -13,3 +13,4 @@ torchaudio==2.5.1
 torchinfo==1.8.0
 tqdm==4.67.3
 uvicorn==0.41.0
+fpdf2==2.8.7

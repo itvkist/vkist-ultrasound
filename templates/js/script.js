@@ -181,9 +181,11 @@ function updateSaveButtonState() {
     const name = document.getElementById('patientName').value.trim();
     const id = document.getElementById('patientId').value.trim();
     const btn = document.getElementById('saveDataBtn');
+    const exportBtn = document.getElementById('exportPdfBtn');
     
-    // Nút lưu chỉ bật khi có kết quả và điền đủ Tên + Mã
-    btn.disabled = !(currentResult && name && id);
+    const isValid = !!(currentResult && name && id);
+    btn.disabled = !isValid;
+    exportBtn.disabled = !isValid;
 }
 
 // Lắng nghe thay đổi trên form
@@ -234,6 +236,58 @@ document.getElementById('saveDataBtn').addEventListener('click', async () => {
         statusDiv.innerHTML = `<span style="color: red;">❌ Lỗi: ${error.message}</span>`;
     } finally {
         saveBtn.disabled = false;
+    }
+});
+
+document.getElementById('exportPdfBtn').addEventListener('click', async () => {
+    if (!currentResult) return;
+
+    const exportBtn = document.getElementById('exportPdfBtn');
+    const statusDiv = document.getElementById('saveStatus');
+    
+    const payload = {
+        patient_info: {
+            name: document.getElementById('patientName').value,
+            id: document.getElementById('patientId').value,
+            gender: document.getElementById('patientGender').value,
+            age: document.getElementById('patientAge').value,
+            diagnosis: document.getElementById('doctorDiagnosis').value
+        },
+        analysis_result: currentResult,
+        images: {
+            original: originalImageBase64,
+            segmented: currentResult.images.segmented
+        }
+    };
+
+    try {
+        exportBtn.disabled = true;
+        statusDiv.innerHTML = '<span style="color: blue;">⌛ Đang khởi tạo PDF...</span>';
+        
+        const response = await fetch(`${API_BASE}/api/export-pdf`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error('Lỗi từ server khi tạo PDF');
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Phieu_Kham_${payload.patient_info.id || 'BN'}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        statusDiv.innerHTML = `<span style="color: green;">✅ Đã xuất file PDF!</span>`;
+    } catch (error) {
+        console.error('❌ Export error:', error);
+        statusDiv.innerHTML = `<span style="color: red;">❌ Lỗi: ${error.message}</span>`;
+    } finally {
+        exportBtn.disabled = false;
     }
 });
 

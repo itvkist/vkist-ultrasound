@@ -281,7 +281,10 @@ body {
     margin-top: 25px;
     padding-top: 20px;
     border-top: 2px solid #eee;
-    text-align: center;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
 }
 .save-btn {
     background: linear-gradient(135deg, #2ecc71, #27ae60);
@@ -307,6 +310,31 @@ body {
     opacity: 0.7;
 }
 .save-btn .icon { font-size: 1.2rem; }
+
+.export-btn {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    padding: 14px 40px;
+    border: none;
+    border-radius: 30px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+.export-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+}
+.export-btn:disabled {
+    background: #bdc3c7;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+.export-btn .icon { font-size: 1.2rem; }
 .confidence {
     font-size: 0.85rem;
     color: #7f8c8d;

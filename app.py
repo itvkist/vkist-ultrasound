@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Request
+from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -25,6 +25,7 @@ import sys
 sys.path.append('.')
 from arch.efficientfeedback import EfficientFeedbackNetwork
 from arch.unet3plus_att import UNet3Plus_Attention
+from pdf_service import generate_medical_report
 
 # Configuration
 UPLOAD_FOLDER = 'uploads'
@@ -739,11 +740,43 @@ async def save_patient_data(data: SaveDataRequest):
         save_base64_img(imgs.get('original'), "original.png")
         save_base64_img(imgs.get('segmented'), "segmented.png")
         
+        # 4. Tự động lưu PDF báo cáo
+        try:
+            pdf_bytes = generate_medical_report(p, res, imgs)
+            pdf_path = os.path.join(target_dir, "report.pdf")
+            with open(pdf_path, "wb") as f:
+                f.write(bytes(pdf_bytes))
+            print(f"📄 Report PDF saved to: {pdf_path}")
+        except Exception as pdf_err:
+            print(f"⚠️ Warning: Could not auto-save PDF: {pdf_err}")
+
         print(f"✅ Data saved for patient: {patient_id}")
         return {"success": True, "folder": target_dir}
         
     except Exception as e:
         print(f"❌ Save Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/export-pdf")
+async def export_patient_pdf(data: SaveDataRequest):
+    try:
+        pdf_bytes = generate_medical_report(
+            data.patient_info, 
+            data.analysis_result, 
+            data.images
+        )
+        
+        filename = f"Phieu_Kham_{sanitize_name(data.patient_info.get('id', 'unknown'))}.pdf"
+        
+        return Response(
+            content=bytes(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        import traceback
+        print(f"❌ PDF Export Error: {e}")
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == '__main__':
