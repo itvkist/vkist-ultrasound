@@ -6,6 +6,25 @@ The system processes ultrasound images and assists clinicians in identifying pot
 
 ---
 
+## Yêu cầu hệ thống
+
+### 1. YÊU CẦU VỀ MÁY TÍNH
+*   **Hệ điều hành:** Windows 10/11 (64-bit) hoặc Ubuntu 20.04/22.04.
+*   **CPU:** Tối thiểu 4 nhân (khuyến nghị Intel Core i5 thế hệ 10 trở lên hoặc tương đương).
+*   **RAM:** Tối thiểu 16GB.
+*   **GPU:** NVIDIA GPU hỗ trợ CUDA (Kiến trúc Pascal trở lên, ví dụ: GTX 10-series, RTX series).
+*   **VRAM:** Khuyến nghị 8GB trở lên để tối ưu tốc độ phân vùng (segmentation).
+
+### 2. CÀI ĐẶT PHẦN MỀM HỖ TRỢ
+*   **Quản lý môi trường:** [Anaconda3](https://www.anaconda.com/download) hoặc Miniconda.
+*   **Đồ họa:** NVIDIA Driver tương thích với CUDA 12.4.
+*   **CUDA Toolkit:** Phiên bản 12.4.
+*   **Trình biên dịch C++:**
+    *   **Windows:** [Microsoft Visual C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
+    *   **Ubuntu:** Cài đặt qua lệnh `sudo apt install build-essential`.
+
+---
+
 ## Installation
 
 ### 1. Clone the Repository
@@ -20,15 +39,6 @@ conda create -n vkist-ultrasound python=3.10 -y
 conda activate vkist-ultrasound
 pip install -r requirements.txt
 ```
-
-### Prerequisites
-
-Before running the application, ensure the following are installed:
-
-- **CUDA 12.4**
-- **cuDNN 9.x** (compatible with CUDA 12.4)
-
-If you are using a different CUDA version, please install the corresponding compatible version of PyTorch.
 
 ### Download Model Weights
 

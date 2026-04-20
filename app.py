@@ -549,7 +549,7 @@ async def analyze_image(
         }
         
         angle_clf = load_angle_model(angle_model)
-        angle, angle_conf = predict_angle(angle_clf, enhanced_pil)
+        angle, angle_conf = predict_angle(angle_clf, image_pil)
         result['angle'] = {'class': angle, 'confidence': angle_conf}
         print(f"✅ Angle: {angle} ({angle_conf}%)")
         
@@ -557,96 +557,102 @@ async def analyze_image(
             print(f"🔍 POST-TRANS pipeline")
             
             inflam_model = load_inflammation_model()
-            has_inflammation, inflam_conf = predict_inflammation(inflam_model, enhanced_pil)
+            has_inflammation, inflam_conf = predict_inflammation(inflam_model, image_pil)
             result['inflammation'] = {'detected': has_inflammation, 'confidence': inflam_conf}
             print(f"✅ Inflammation: {has_inflammation} ({inflam_conf}%)")
             
-            seg_model = load_segmentation_model_post(segment_model_post)
-            preds, masks = segment_image(seg_model, enhanced_pil, segment_model_post, 'post')
-            
-            if masks:
-                segmented_img = create_segmentation_overlay(image_pil, masks, None, 'post')
-                # Convert to base64
-                buffered = io.BytesIO()
-                segmented_img.save(buffered, format="PNG")
-                img_str = base64.b64encode(buffered.getvalue()).decode()
+            if has_inflammation:
+                seg_model = load_segmentation_model_post(segment_model_post)
+                preds, masks = segment_image(seg_model, image_pil, segment_model_post, 'post')
+                
+                if masks:
+                    segmented_img = create_segmentation_overlay(image_pil, masks, None, 'post')
+                    # Convert to base64
+                    buffered = io.BytesIO()
+                    segmented_img.save(buffered, format="PNG")
+                    img_str = base64.b64encode(buffered.getvalue()).decode()
 
-                result['images']['segmented'] = f"data:image/png;base64,{img_str}"
-                
-                detected_classes = [k for k, v in masks.items() if np.sum(v) > 0]
-                color_legend = []
-                for class_name in detected_classes:
-                    if class_name in COLOR_MAP_POST:
-                        color_legend.append({
-                            'name': COLOR_MAP_POST[class_name]['name'],
-                            'color': COLOR_MAP_POST[class_name]['color'],
-                            'key': class_name
-                        })
-                
-                result['segmentation'] = {
-                    'performed': True,
-                    'classes_detected': detected_classes,
-                    'color_legend': color_legend,
-                    'angle_type': 'post'
-                }
-                
-                print(f"✅ Segmentation POST completed")
+                    result['images']['segmented'] = f"data:image/png;base64,{img_str}"
+                    
+                    detected_classes = [k for k, v in masks.items() if np.sum(v) > 0]
+                    color_legend = []
+                    for class_name in detected_classes:
+                        if class_name in COLOR_MAP_POST:
+                            color_legend.append({
+                                'name': COLOR_MAP_POST[class_name]['name'],
+                                'color': COLOR_MAP_POST[class_name]['color'],
+                                'key': class_name
+                            })
+                    
+                    result['segmentation'] = {
+                        'performed': True,
+                        'classes_detected': detected_classes,
+                        'color_legend': color_legend,
+                        'angle_type': 'post'
+                    }
+                    
+                    print(f"✅ Segmentation POST completed")
+            else:
+                print(f"ℹ️ No inflammation detected - skipping segmentation POST")
         
         elif 'sup-up-long' in angle.lower():
             print(f"🔍 SUPRAPAT pipeline")
             
             inflam_model = load_inflammation_model()
-            has_inflammation, inflam_conf = predict_inflammation(inflam_model, enhanced_pil)
+            has_inflammation, inflam_conf = predict_inflammation(inflam_model, image_pil)
             result['inflammation'] = {'detected': has_inflammation, 'confidence': inflam_conf}
             print(f"✅ Inflammation: {has_inflammation} ({inflam_conf}%)")
             
-            seg_model = load_segmentation_model_sup(segment_model_sup)
-            preds, masks = segment_image(seg_model, enhanced_pil, segment_model_sup, 'sup')
-            
-            if masks:
-                measurement = measure_thickness_new(masks, enhanced_pil.size)
+            if has_inflammation:
+                seg_model = load_segmentation_model_sup(segment_model_sup)
+                preds, masks = segment_image(seg_model, image_pil, segment_model_sup, 'sup')
                 
-                segmented_img = create_segmentation_overlay(image_pil, masks, measurement, 'sup')
-                # Convert to base64
-                buffered = io.BytesIO()
-                segmented_img.save(buffered, format="PNG")
-                img_str = base64.b64encode(buffered.getvalue()).decode()
+                if masks:
+                    measurement = measure_thickness_new(masks, image_pil.size)
+                    
+                    segmented_img = create_segmentation_overlay(image_pil, masks, measurement, 'sup')
+                    # Convert to base64
+                    buffered = io.BytesIO()
+                    segmented_img.save(buffered, format="PNG")
+                    img_str = base64.b64encode(buffered.getvalue()).decode()
 
-                result['images']['segmented'] = f"data:image/png;base64,{img_str}"
-                
-                if measurement:
-                    result['measurement'] = {
-                        'thickness_mm': measurement['thickness_mm'],
-                        'thickness_px': measurement['thickness_px'],
-                        'location_x': measurement['x'],
-                        'y_start': measurement['y_start'],
-                        'y_end': measurement['y_end']
+                    result['images']['segmented'] = f"data:image/png;base64,{img_str}"
+                    
+                    if measurement:
+                        result['measurement'] = {
+                            'thickness_mm': measurement['thickness_mm'],
+                            'thickness_px': measurement['thickness_px'],
+                            'location_x': measurement['x'],
+                            'y_start': measurement['y_start'],
+                            'y_end': measurement['y_end']
+                        }
+                        print(f"✅ Measurement: {measurement['thickness_mm']:.2f}mm at x={measurement['x']}")
+                    
+                    detected_classes = [k for k, v in masks.items() if np.sum(v) > 0]
+                    color_legend = []
+                    for class_name in detected_classes:
+                        if class_name in COLOR_MAP_SUP:
+                            color_legend.append({
+                                'name': COLOR_MAP_SUP[class_name]['name'],
+                                'color': COLOR_MAP_SUP[class_name]['color'],
+                                'key': class_name
+                            })
+                    
+                    result['segmentation'] = {
+                        'performed': True,
+                        'classes_detected': detected_classes,
+                        'color_legend': color_legend,
+                        'angle_type': 'sup'
                     }
-                    print(f"✅ Measurement: {measurement['thickness_mm']:.2f}mm at x={measurement['x']}")
-                
-                detected_classes = [k for k, v in masks.items() if np.sum(v) > 0]
-                color_legend = []
-                for class_name in detected_classes:
-                    if class_name in COLOR_MAP_SUP:
-                        color_legend.append({
-                            'name': COLOR_MAP_SUP[class_name]['name'],
-                            'color': COLOR_MAP_SUP[class_name]['color'],
-                            'key': class_name
-                        })
-                
-                result['segmentation'] = {
-                    'performed': True,
-                    'classes_detected': detected_classes,
-                    'color_legend': color_legend,
-                    'angle_type': 'sup'
-                }
-                
-                severity = analyze_inflammation_severity(masks, image_pil.size)
-                if severity:
-                    result['severity'] = severity
-                    print(f"✅ Severity: {severity['severity']}")
-                
-                print(f"✅ Segmentation SUP completed")
+                    
+                    severity = analyze_inflammation_severity(masks, image_pil.size)
+                    if severity:
+                        result['severity'] = severity
+                        print(f"✅ Severity: {severity['severity']}")
+                    
+                    print(f"✅ Segmentation SUP completed")
+            else:
+                print(f"ℹ️ No inflammation detected - skipping segmentation SUP")
         
         else:
             print(f"ℹ️ Other angle - only angle classification")
@@ -780,7 +786,7 @@ async def export_patient_pdf(data: SaveDataRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == '__main__':
-    print("🏥 Medical Image Analysis Server")
-    print(f"🌐 http://127.0.0.1:8000")
-    print(f"🖥️ Device: {device}")
+    print("Medical Image Analysis Server")
+    print(f"URL: http://127.0.0.1:8000")
+    print(f"Device: {device}")
     uvicorn.run(app, host="127.0.0.1", port=8000)
