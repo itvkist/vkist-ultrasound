@@ -245,19 +245,79 @@ def segment_image(model, image_pil, model_type, angle_type):
     
     return preds, masks
 
-def get_mask_bounding_box(mask):
+def get_mask_bounding_box(mask, dist_percent=0.01):
     """
-    Duyệt toàn bộ vùng được mask và trả về khung bao (Bounding Box).
-    Trả về: (x, y, w, h) hoặc None nếu mask rỗng.
+    Duyệt toàn bộ vùng được mask, loại bỏ nhiễu và trả về khung bao (Bounding Box).
+    Áp dụng quy tắc kết hợp:
+    1. Giữ lại khối có diện tích lớn nhất (vùng trung tâm).
+    2. Giữ lại các khối phụ nếu thỏa mãn một trong hai điều kiện:
+       - Diện tích >= 1/5 diện tích khối lớn nhất.
+       - Khoảng cách tới khối lớn nhất <= dist_percent * chiều rộng ảnh.
     """
     if mask is None or np.sum(mask) == 0:
         return None
+    
+    # 1. Chuyển sang uint8
+    mask_uint8 = mask.astype(np.uint8)
+    if np.max(mask_uint8) == 1:
+        mask_uint8 *= 255
+    
+    # Lấy chiều rộng ảnh để tính ngưỡng khoảng cách theo %
+    img_width = mask_uint8.shape[1]
+    dist_threshold = img_width * dist_percent
         
-    points = cv2.findNonZero(mask.astype(np.uint8))
-    if points is None:
+    # 2. Làm sạch mask cơ bản (Morphological Opening)
+    kernel = np.ones((5, 5), np.uint8)
+    clean_mask = cv2.morphologyEx(mask_uint8, cv2.MORPH_OPEN, kernel)
+    
+    # 3. Tìm các đường bao (các khối tách rời)
+    contours, _ = cv2.findContours(clean_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    if not contours:
         return None
         
-    return cv2.boundingRect(points)
+    # 4. Tính diện tích từng khối và tìm khối lớn nhất
+    contour_info = []
+    for cnt in contours:
+        contour_info.append({'cnt': cnt, 'area': cv2.contourArea(cnt)})
+    
+    # Sắp xếp theo diện tích giảm dần
+    contour_info.sort(key=lambda x: x['area'], reverse=True)
+    main_block = contour_info[0]
+    max_area = main_block['area']
+    
+    if max_area < 50:
+        return None
+
+    # 5. Chuẩn bị để tính khoảng cách (Distance Transform)
+    main_mask = np.zeros_like(mask_uint8)
+    cv2.drawContours(main_mask, [main_block['cnt']], -1, 255, -1)
+    # dist_map chứa khoảng cách từ mỗi điểm tới biên gần nhất của khối chính
+    dist_map = cv2.distanceTransform(255 - main_mask, cv2.DIST_L2, 3)
+    
+    # 6. Lọc các khối
+    significant_contours = [main_block['cnt']]
+    area_threshold = max_area / 4.0
+    
+    for i in range(1, len(contour_info)):
+        other = contour_info[i]
+        
+        # Tạo mask cho khối đang xét để lấy giá trị khoảng cách
+        other_mask = np.zeros_like(mask_uint8)
+        cv2.drawContours(other_mask, [other['cnt']], -1, 255, -1)
+        
+        # Khoảng cách nhỏ nhất từ khối này tới khối chính
+        min_dist = np.min(dist_map[other_mask > 0])
+        
+        # Điều kiện giữ lại: (Diện tích đủ lớn) HOẶC (Ở gần khối chính theo %)
+        if other['area'] >= area_threshold or min_dist <= dist_threshold:
+            significant_contours.append(other['cnt'])
+    
+    # 7. Tính toán bounding box bao quanh tất cả các vùng được chọn
+    all_points = np.concatenate(significant_contours)
+    x, y, w, h = cv2.boundingRect(all_points)
+    
+    return x, y, w, h
 
 def find_max_continuous_segment(col_array):
     padded = np.concatenate(([0], col_array, [0]))

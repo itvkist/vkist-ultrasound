@@ -468,3 +468,214 @@ body {
     font-weight: 700;
     color: #2c3e50;
 }
+
+/* Modal Styles - Expanded */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(12px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    padding: 20px;
+}
+
+.modal-overlay.active {
+    display: flex;
+    opacity: 1;
+}
+
+.modal-content {
+    background: white;
+    width: 100%;
+    max-width: 1000px;
+    max-height: 95vh;
+    border-radius: 24px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+    overflow-y: auto;
+    transform: scale(0.9) translateY(30px);
+    transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-overlay.active .modal-content {
+    transform: scale(1) translateY(0);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+    color: white;
+    padding: 20px 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.modal-header h2 {
+    font-size: 1.4rem;
+    font-weight: 800;
+}
+
+.close-modal {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.close-modal:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
+}
+
+.modal-body {
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+/* Image Grid in Modal */
+.modal-images-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.modal-img-box {
+    background: #f1f3f5;
+    padding: 10px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.img-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #495057;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.modal-img-box img {
+    width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+/* Details Grid in Modal */
+.modal-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.modal-detail-card {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border: 1px solid #e9ecef;
+}
+
+.modal-detail-card.highlight {
+    background: linear-gradient(135deg, #f0f7ff 0%, #e3f2fd 100%);
+    border-color: #bbdefb;
+}
+
+.modal-detail-card .label {
+    font-size: 0.8rem;
+    color: #6c757d;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.modal-detail-card .value {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #2c3e50;
+}
+
+.modal-legend {
+    background: white;
+    padding: 20px;
+    border-radius: 16px;
+    border: 1px solid #dee2e6;
+}
+
+.modal-legend h4 {
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+}
+
+.modal-advice {
+    background: #fff9db;
+    padding: 20px;
+    border-radius: 16px;
+    border-left: 5px solid #fcc419;
+    color: #856404;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.modal-footer {
+    padding: 0 30px 40px;
+    display: flex;
+    justify-content: center;
+}
+
+.modal-btn-primary {
+    background: linear-gradient(135deg, #228be6, #1c7ed6);
+    color: white;
+    border: none;
+    padding: 16px 60px;
+    border-radius: 35px;
+    font-size: 1.2rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 10px 25px -5px rgba(34, 139, 230, 0.4);
+    transition: all 0.3s;
+}
+
+.modal-btn-primary:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 15px 30px -5px rgba(34, 139, 230, 0.5);
+}
+
+/* Responsive Modal */
+@media (max-width: 768px) {
+    .modal-images-grid {
+        grid-template-columns: 1fr;
+    }
+    .modal-content {
+        max-height: 100vh;
+        border-radius: 0;
+    }
+    .modal-overlay {
+        padding: 0;
+    }
+}

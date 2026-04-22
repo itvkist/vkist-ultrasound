@@ -170,6 +170,9 @@ function displayResults(result) {
         document.getElementById('patientInfoPanel').style.display = 'block';
         updateSaveButtonState();
 
+        // HIỂN THỊ POPUP KẾT QUẢ
+        showResultPopup(result);
+
     } catch (err) {
         console.error('❌ LỖI TRONG displayResults:', err);
         showError(`Lỗi hiển thị: ${err.message}`);
@@ -333,6 +336,97 @@ function hideResults() {
     document.getElementById('severityCard').style.display = 'none';
     document.getElementById('noResults').style.display = 'block';
 }
+
+function showResultPopup(result) {
+    const modal = document.getElementById('resultModal');
+    
+    // 1. Hình ảnh
+    if (result.images) {
+        document.getElementById('modalImgEnhanced').src = result.images.enhanced || '';
+        const segImg = document.getElementById('modalImgSegmented');
+        const segBox = document.getElementById('modalImgSegmentedBox');
+        
+        if (result.images.segmented) {
+            segImg.src = result.images.segmented;
+            segBox.style.display = 'block';
+        } else {
+            segBox.style.display = 'none';
+        }
+    }
+
+    // 2. Chi tiết kết quả
+    document.getElementById('modalAngle').textContent = ANGLE_NAMES[result.angle.class] || result.angle.class;
+    
+    const inflEl = document.getElementById('modalInflammation');
+    if (result.inflammation) {
+        document.getElementById('modalInflammationRow').style.display = 'flex';
+        if (result.inflammation.detected) {
+            inflEl.innerHTML = '<span class="badge badge-danger">CÓ VIÊM/THEO DÕI</span>';
+        } else {
+            inflEl.innerHTML = '<span class="badge badge-success">KHÔNG VIÊM</span>';
+        }
+    } else {
+        document.getElementById('modalInflammationRow').style.display = 'none';
+    }
+
+    if (result.measurement) {
+        document.getElementById('modalMeasurementRow').style.display = 'flex';
+        document.getElementById('modalThickness').textContent = `${result.measurement.thickness_mm} mm`;
+    } else {
+        document.getElementById('modalMeasurementRow').style.display = 'none';
+    }
+
+    if (result.severity) {
+        document.getElementById('modalSeverityRow').style.display = 'flex';
+        const badge = document.getElementById('modalSeverity');
+        badge.textContent = result.severity.severity;
+        badge.style.background = result.severity.color;
+    } else {
+        document.getElementById('modalSeverityRow').style.display = 'none';
+    }
+
+    // 3. Chú thích màu sắc (Legend) trong modal
+    const legendContainer = document.getElementById('modalLegendContainer');
+    if (result.segmentation && result.segmentation.performed && result.segmentation.color_legend) {
+        legendContainer.style.display = 'block';
+        renderModalLegend(result.segmentation.color_legend);
+    } else {
+        legendContainer.style.display = 'none';
+    }
+
+    // Hiển thị modal
+    modal.classList.add('active');
+}
+
+function renderModalLegend(colorLegend) {
+    const itemsContainer = document.getElementById('modalLegendItems');
+    itemsContainer.innerHTML = '';
+    
+    colorLegend.forEach(item => {
+        const isHighlight = item.key === 'effusion' || item.key === 'synovium';
+        const legendItem = document.createElement('div');
+        legendItem.className = 'legend-item';
+        legendItem.innerHTML = `
+            <div class="legend-color ${isHighlight ? 'legend-highlight' : ''}" 
+                 style="background-color: rgb(${item.color.join(',')})"></div>
+            <span>${item.name}</span>
+        `;
+        itemsContainer.appendChild(legendItem);
+    });
+}
+
+function closeResultPopup() {
+    document.getElementById('resultModal').classList.remove('active');
+}
+
+// Event Listeners for Modal
+document.getElementById('closeModal').addEventListener('click', closeResultPopup);
+document.getElementById('modalViewDetail').addEventListener('click', closeResultPopup);
+
+// Click outside to close
+document.getElementById('resultModal').addEventListener('click', (e) => {
+    if (e.target.id === 'resultModal') closeResultPopup();
+});
 
 // Health check
 window.addEventListener('load', async () => {

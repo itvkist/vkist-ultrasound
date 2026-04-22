@@ -229,6 +229,59 @@
         </div>
     </div>
 
+    <!-- Popup Kết quả chẩn đoán -->
+    <div id="resultModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🩺 KẾT QUẢ CHẨN ĐOÁN AI</h2>
+                <button class="close-modal" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-images-grid">
+                    <div class="modal-img-box">
+                        <span class="img-label">Ảnh tăng cường</span>
+                        <img id="modalImgEnhanced" src="" alt="Enhanced">
+                    </div>
+                    <div class="modal-img-box" id="modalImgSegmentedBox">
+                        <span class="img-label">Ảnh phân đoạn</span>
+                        <img id="modalImgSegmented" src="" alt="Segmented">
+                    </div>
+                </div>
+
+                <div class="modal-details-grid">
+                    <div class="modal-detail-card">
+                        <span class="label">📐 Góc chụp</span>
+                        <span class="value" id="modalAngle">-</span>
+                    </div>
+                    <div class="modal-detail-card" id="modalInflammationRow">
+                        <span class="label">🔥 Tình trạng</span>
+                        <span class="value" id="modalInflammation">-</span>
+                    </div>
+                    <div class="modal-detail-card highlight" id="modalMeasurementRow" style="display: none;">
+                        <span class="label">📏 Độ dày</span>
+                        <span class="value" id="modalThickness">- mm</span>
+                    </div>
+                    <div class="modal-detail-card highlight" id="modalSeverityRow" style="display: none;">
+                        <span class="label">📈 Mức độ</span>
+                        <span class="severity-badge" id="modalSeverity">-</span>
+                    </div>
+                </div>
+
+                <div id="modalLegendContainer" class="modal-legend" style="display: none;">
+                    <h4>📋 Chú thích màu sắc:</h4>
+                    <div id="modalLegendItems" class="legend-items"></div>
+                </div>
+                
+                <div class="modal-advice">
+                    <p id="modalAdviceText">Hệ thống AI đã hoàn tất phân tích. Vui lòng đối chiếu hình ảnh và kết quả đo đạc phía trên.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn-primary" id="modalViewDetail">Xem chi tiết</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Link JavaScript -->
     <script src="js/script.js?v=1.1"></script>
 </body>
